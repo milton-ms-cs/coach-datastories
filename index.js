@@ -24,6 +24,24 @@ What you CANNOT do:
 - Do their homework for them. If they ask, say: "I can't write that for you, but let me help you figure it out! What part are you stuck on?"
 - Answer questions outside of course content.
 
+## Mechanics vs. interpretation
+
+There are two very different kinds of help here, and you should treat them differently.
+
+**Mechanics — be direct and specific. Just show them:**
+- Syntax errors, tracebacks, and column name issues (e.g. KeyError, ds.col() not finding a match) — explain what's wrong and point to the line.
+- ds_helpers/pandas syntax: how to call a function, what arguments it takes, fixing a typo in a method name.
+- Code that won't run because of indentation, a missing parenthesis, or a wrong variable name.
+
+For these, just give them the working code or fix — pandas/ds_helpers syntax is not the learning objective here, so it's fine to hand it over directly.
+
+**Interpretation — make THEM do the thinking:**
+- "What does this chart show?" / "Why is the average so high?" / "What's the story here?" — these are reasoning questions, not syntax questions. Don't answer for them. Ask a leading question instead: "What do you notice when you compare the two bars?" or "What might explain that outlier?"
+- "What should my data story say?" — don't write their conclusion. Ask what they noticed in the data and help them put it into words themselves.
+- "Is this a good chart?" — ask what story they're trying to tell, then help them evaluate whether the chart shows it.
+
+The data reasoning is the assignment. The pandas/ds_helpers syntax is just the tool to get there — be generous with the tool, but make them own the thinking.
+
 ## ds_helpers.py Function Reference
 
 **Data Loading & Cleaning:**
@@ -64,6 +82,7 @@ When students have column name issues, ask them to paste the output of ds.column
   // Try to read actual notebook and data files from workspace
   async function tryGetWorkspaceFiles() {
     let filesContext = "";
+    const totalBudget = 40000;
 
     try {
       if (!codioIDE.workspace || !codioIDE.workspace.getFileTree) {
@@ -74,9 +93,13 @@ When students have column name issues, ask them to paste the output of ds.column
       const relevantFiles = findRelevantFiles(fileTree);
 
       for (const filePath of relevantFiles) {
+        if (filesContext.length >= totalBudget) {
+          break;
+        }
+
         try {
           const content = await codioIDE.workspace.readFile(filePath);
-          const maxLength = 15000;
+          const maxLength = Math.min(15000, totalBudget - filesContext.length);
 
           if (content && content.length > 0) {
             if (content.length <= maxLength) {
@@ -180,6 +203,10 @@ When students have column name issues, ask them to paste the output of ds.column
       ? context.guidesPage.content
       : "No guide available.";
 
+    const assignmentName = (context.assignmentData && context.assignmentData.name)
+      ? context.assignmentData.name
+      : null;
+
     const initialUserPrompt = `Here is the student's open notebook and workspace files:
 <notebook>
 ${filesContent}
@@ -188,7 +215,7 @@ Here is the assignment guide:
 <guide>
 ${guideContent}
 </guide>
-
+${assignmentName ? `\nAssignment: ${assignmentName}\n` : ''}
 The student says: ${initialInput}`;
 
     messages.push({
@@ -197,6 +224,7 @@ The student says: ${initialInput}`;
     });
 
     try {
+      codioIDE.coachBot.showThinkingAnimation();
       const result = await codioIDE.coachBot.ask({
         systemPrompt: systemPrompt,
         messages: messages
@@ -205,6 +233,8 @@ The student says: ${initialInput}`;
     } catch (e) {
       codioIDE.coachBot.write("Hmm, something went wrong on my end. Try asking that again!");
       messages.pop();
+    } finally {
+      codioIDE.coachBot.hideThinkingAnimation();
     }
 
     while (true) {
@@ -226,6 +256,7 @@ The student says: ${initialInput}`;
       });
 
       try {
+        codioIDE.coachBot.showThinkingAnimation();
         const result = await codioIDE.coachBot.ask({
           systemPrompt: systemPrompt,
           messages: messages
@@ -235,6 +266,8 @@ The student says: ${initialInput}`;
         codioIDE.coachBot.write("Hmm, something went wrong on my end. Try asking that again!");
         messages.pop();
         continue;
+      } finally {
+        codioIDE.coachBot.hideThinkingAnimation();
       }
 
       // Keep first message (with notebook + guide) + last 8 messages (4 exchanges)
