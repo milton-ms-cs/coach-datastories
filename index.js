@@ -138,7 +138,7 @@ When students have column name issues, ask them to paste the output of ds.column
   }
 
   // register(id, name, function)
-  codioIDE.coachBot.register("iNeedHelpButton", "I have a question", onButtonPress);
+  codioIDE.coachBot.register("dataStoriesHelp", "Data Stories Coach", onButtonPress);
 
   async function onButtonPress() {
     const context = await codioIDE.coachBot.getContext();
@@ -157,7 +157,13 @@ When students have column name issues, ask them to paste the output of ds.column
 
     let messages = [];
 
-    const initialInput = await codioIDE.coachBot.input("What can I help you with?");
+    let initialInput;
+    try {
+      initialInput = await codioIDE.coachBot.input("What can I help you with?");
+    } catch (e) {
+      codioIDE.coachBot.showMenu();
+      return;
+    }
 
     // Build notebook context from open Jupyter notebooks
     const notebookContent = extractNotebookContent(context.jupyterContext);
@@ -190,17 +196,27 @@ The student says: ${initialInput}`;
       "content": initialUserPrompt
     });
 
-    let result = await codioIDE.coachBot.ask({
-      systemPrompt: systemPrompt,
-      messages: messages
-    }, {preventMenu: true});
-
-    messages.push({"role": "assistant", "content": result.result});
+    try {
+      const result = await codioIDE.coachBot.ask({
+        systemPrompt: systemPrompt,
+        messages: messages
+      }, {preventMenu: true});
+      messages.push({"role": "assistant", "content": result.result});
+    } catch (e) {
+      codioIDE.coachBot.write("Hmm, something went wrong on my end. Try asking that again!");
+      messages.pop();
+    }
 
     while (true) {
-      const input = await codioIDE.coachBot.input("What else can I help you with?");
+      let input;
+      try {
+        input = await codioIDE.coachBot.input("What else can I help you with? (Say 'thanks' when you're done!)");
+      } catch (e) {
+        break;
+      }
 
-      if (exitPhrases.some(phrase => input.toLowerCase().includes(phrase))) {
+      const trimmedInput = input.trim().toLowerCase();
+      if (exitPhrases.includes(trimmedInput)) {
         break;
       }
 
@@ -209,16 +225,21 @@ The student says: ${initialInput}`;
         "content": input
       });
 
-      result = await codioIDE.coachBot.ask({
-        systemPrompt: systemPrompt,
-        messages: messages
-      }, {preventMenu: true});
-
-      messages.push({"role": "assistant", "content": result.result});
+      try {
+        const result = await codioIDE.coachBot.ask({
+          systemPrompt: systemPrompt,
+          messages: messages
+        }, {preventMenu: true});
+        messages.push({"role": "assistant", "content": result.result});
+      } catch (e) {
+        codioIDE.coachBot.write("Hmm, something went wrong on my end. Try asking that again!");
+        messages.pop();
+        continue;
+      }
 
       // Keep first message (with notebook + guide) + last 8 messages (4 exchanges)
-      if (messages.length > 9) {
-        messages = [messages[0], ...messages.slice(-8)];
+      while (messages.length > 9) {
+        messages.splice(1, 2); // drop the oldest assistant+user pair, keep messages[0] (context) intact
       }
     }
 
