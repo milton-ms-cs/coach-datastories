@@ -25,6 +25,10 @@ The older notes below that describe `workspace.getFileTree()` as "unavailable in
 
 Docs: https://codio.github.io/client/codioIDE.files.html
 
+### Context refresh + version banner (v1.6.0)
+
+Context is no longer captured once at button press: `buildContextMessage()` re-reads `getContext()` + `codioIDE.files` before every follow-up `ask()` and rebuilds `messages[0]`, so the coach sees the student's latest cell edits. If the student closes the notebook mid-conversation the refresh throws and the previous context is kept. Also added the `VERSION` constant, a banner on button press, and the "version" input easter egg (same pattern as coach-pygame-zero / coach-scratch) to verify release propagation.
+
 ---
 
 ## Session: December 2, 2025

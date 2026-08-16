@@ -77,6 +77,7 @@ When students have column name issues, ask them to paste the output of ds.column
   const exitPhrases = ["thanks", "thank you", "bye", "done", "exit", "quit", "stop", "no thanks", "i'm good", "im good", "that's all", "thats all"];
 
   // Configuration
+  const VERSION = "1.6.0";
   const DEBUG_MODE = false;  // Set to true to see debug output
 
   // Try to read supporting files (python helpers, CSVs, other notebooks) via
@@ -176,29 +177,15 @@ When students have column name issues, ask them to paste the output of ds.column
   // register(id, name, function)
   codioIDE.coachBot.register("dataStoriesHelp", "Data Stories Coach", onButtonPress);
 
-  async function onButtonPress() {
+  // Build the context-bearing first message from a fresh getContext() +
+  // codioIDE.files read. Re-run before every ask() so the coach sees the
+  // student's latest edits, not their notebook as of the button press.
+  // Throws if no notebook is open so a refresh can keep the previous context.
+  async function buildContextMessage(initialInput) {
     const context = await codioIDE.coachBot.getContext();
 
-    if (DEBUG_MODE) {
-      codioIDE.coachBot.write("**DEBUG - Context received:**");
-      codioIDE.coachBot.write("```json\n" + JSON.stringify(context, null, 2) + "\n```");
-    }
-
-    // Check if any Jupyter notebooks are open
     if (!context.jupyterContext || context.jupyterContext.length === 0) {
-      codioIDE.coachBot.write("**Please open a Jupyter notebook first!**\n\nI can help you better when I can see your code. Please open one of your notebook files (Step One, Step Two, etc.) and then click the coach button again.");
-      codioIDE.coachBot.showMenu();
-      return;
-    }
-
-    let messages = [];
-
-    let initialInput;
-    try {
-      initialInput = await codioIDE.coachBot.input("What can I help you with?");
-    } catch (e) {
-      codioIDE.coachBot.showMenu();
-      return;
+      throw new Error("no open notebook");
     }
 
     // Build notebook context from open Jupyter notebooks
@@ -225,7 +212,7 @@ When students have column name issues, ask them to paste the output of ds.column
       ? context.assignmentData.name
       : null;
 
-    const initialUserPrompt = `Here is the student's open notebook and workspace files:
+    return `Here is the student's open notebook and workspace files (current as of their latest question):
 <notebook>
 ${filesContent}
 </notebook>
@@ -235,10 +222,50 @@ ${guideContent}
 </guide>
 ${assignmentName ? `\nAssignment: ${assignmentName}\n` : ''}
 The student says: ${initialInput}`;
+  }
+
+  async function onButtonPress() {
+    codioIDE.coachBot.write(
+      `Data Stories Coach v${VERSION} - Ask me about your data story!`,
+      codioIDE.coachBot.MESSAGE_ROLES.ASSISTANT
+    );
+
+    const context = await codioIDE.coachBot.getContext();
+
+    if (DEBUG_MODE) {
+      codioIDE.coachBot.write("**DEBUG - Context received:**");
+      codioIDE.coachBot.write("```json\n" + JSON.stringify(context, null, 2) + "\n```");
+    }
+
+    // Check if any Jupyter notebooks are open
+    if (!context.jupyterContext || context.jupyterContext.length === 0) {
+      codioIDE.coachBot.write("**Please open a Jupyter notebook first!**\n\nI can help you better when I can see your code. Please open one of your notebook files (Step One, Step Two, etc.) and then click the coach button again.");
+      codioIDE.coachBot.showMenu();
+      return;
+    }
+
+    let messages = [];
+
+    let initialInput;
+    while (true) {
+      try {
+        initialInput = await codioIDE.coachBot.input("What can I help you with?");
+      } catch (e) {
+        codioIDE.coachBot.showMenu();
+        return;
+      }
+
+      if (initialInput === "version") {
+        codioIDE.coachBot.write(`Current version: ${VERSION}`, codioIDE.coachBot.MESSAGE_ROLES.ASSISTANT);
+        continue;
+      }
+
+      break;
+    }
 
     messages.push({
       "role": "user",
-      "content": initialUserPrompt
+      "content": await buildContextMessage(initialInput)
     });
 
     try {
@@ -263,6 +290,11 @@ The student says: ${initialInput}`;
         break;
       }
 
+      if (input === "version") {
+        codioIDE.coachBot.write(`Current version: ${VERSION}`, codioIDE.coachBot.MESSAGE_ROLES.ASSISTANT);
+        continue;
+      }
+
       const trimmedInput = input.trim().toLowerCase();
       if (exitPhrases.includes(trimmedInput)) {
         break;
@@ -272,6 +304,13 @@ The student says: ${initialInput}`;
         "role": "user",
         "content": input
       });
+
+      // Refresh the context block so the coach sees the student's latest edits
+      try {
+        messages[0] = { "role": "user", "content": await buildContextMessage(initialInput) };
+      } catch (e) {
+        // Keep the previous context if the refresh fails (e.g. notebook closed)
+      }
 
       try {
         codioIDE.coachBot.showThinkingAnimation();
