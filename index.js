@@ -79,62 +79,75 @@ When students have column name issues, ask them to paste the output of ds.column
   // Configuration
   const DEBUG_MODE = false;  // Set to true to see debug output
 
-  // Try to read actual notebook and data files from workspace
-  async function tryGetWorkspaceFiles() {
+  // Try to read supporting files (python helpers, CSVs, other notebooks) via
+  // codioIDE.files. codioIDE.workspace does NOT exist in the Custom Assistant
+  // runtime — codioIDE.files is the supported channel:
+  // https://codio.github.io/client/codioIDE.files.html
+  async function tryGetWorkspaceFiles(skipPaths) {
     let filesContext = "";
     const totalBudget = 40000;
+    const F = codioIDE.files;
+    if (!F || typeof F.getStructure !== "function" || typeof F.getContent !== "function") {
+      return filesContext;
+    }
 
+    let relevantFiles = [];
     try {
-      if (!codioIDE.workspace || !codioIDE.workspace.getFileTree) {
-        return filesContext;
-      }
-
-      const fileTree = await codioIDE.workspace.getFileTree();
-      const relevantFiles = findRelevantFiles(fileTree);
-
-      for (const filePath of relevantFiles) {
-        if (filesContext.length >= totalBudget) {
-          break;
-        }
-
-        try {
-          const content = await codioIDE.workspace.readFile(filePath);
-          const maxLength = Math.min(15000, totalBudget - filesContext.length);
-
-          if (content && content.length > 0) {
-            if (content.length <= maxLength) {
-              filesContext += `\nFile: ${filePath}\n${content}\n`;
-            } else {
-              filesContext += `\nFile: ${filePath} (truncated)\n${content.substring(0, maxLength)}\n...(truncated)\n`;
-            }
-          }
-        } catch (err) {
-          // Silent
-        }
-      }
+      relevantFiles = findRelevantFiles(await F.getStructure(), '');
     } catch (error) {
-      // Silent
+      return filesContext;
+    }
+
+    for (const filePath of relevantFiles) {
+      if (filesContext.length >= totalBudget) {
+        break;
+      }
+      if (skipPaths && skipPaths.has(normalizePath(filePath))) {
+        continue;
+      }
+
+      try {
+        const content = await F.getContent(filePath);
+        const maxLength = Math.min(15000, totalBudget - filesContext.length);
+
+        if (typeof content === 'string' && content.length > 0) {
+          if (content.length <= maxLength) {
+            filesContext += `\nFile: ${filePath}\n${content}\n`;
+          } else {
+            filesContext += `\nFile: ${filePath} (truncated)\n${content.substring(0, maxLength)}\n...(truncated)\n`;
+          }
+        }
+      } catch (err) {
+        // Silent
+      }
     }
 
     return filesContext;
   }
 
-  // Find relevant files (notebooks, python files, CSVs)
-  function findRelevantFiles(fileTree, path = '') {
+  function normalizePath(p) {
+    return String(p).replace(/^\.\//, '').replace(/^\//, '');
+  }
+
+  // Find relevant files (notebooks, python files, CSVs).
+  // getStructure() returns a name->value MAP: a file's value is a leaf (Codio
+  // uses 1), a directory's value is a nested map — not an array of nodes.
+  function findRelevantFiles(node, path) {
     let files = [];
+    if (!node || typeof node !== 'object') return files;
 
-    if (fileTree.children) {
-      for (const item of fileTree.children) {
-        const fullPath = path ? `${path}/${item.name}` : item.name;
+    for (const name in node) {
+      if (!Object.prototype.hasOwnProperty.call(node, name)) continue;
+      if (name.startsWith('.')) continue;
+      const fullPath = path ? `${path}/${name}` : name;
+      const value = node[name];
 
-        if (item.type === 'file') {
-          const lower = item.name.toLowerCase();
-          if (!item.name.startsWith('.') &&
-              (lower.endsWith('.ipynb') || lower.endsWith('.py') || lower.endsWith('.csv'))) {
-            files.push(fullPath);
-          }
-        } else if (item.type === 'directory' && !item.name.startsWith('.')) {
-          files = files.concat(findRelevantFiles(item, fullPath));
+      if (value && typeof value === 'object') {
+        files = files.concat(findRelevantFiles(value, fullPath));
+      } else {
+        const lower = name.toLowerCase();
+        if (lower.endsWith('.ipynb') || lower.endsWith('.py') || lower.endsWith('.csv')) {
+          files.push(fullPath);
         }
       }
     }
@@ -191,8 +204,13 @@ When students have column name issues, ask them to paste the output of ds.column
     // Build notebook context from open Jupyter notebooks
     const notebookContent = extractNotebookContent(context.jupyterContext);
 
-    // Try to get additional workspace files
-    const workspaceFiles = await tryGetWorkspaceFiles();
+    // Try to get additional project files (skip notebooks already open —
+    // their content is in jupyterContext, and the raw .ipynb JSON is bulky)
+    const openPaths = new Set(
+      context.jupyterContext.map(nb => normalizePath(nb.path))
+        .concat((context.files || []).map(f => normalizePath(f.path)))
+    );
+    const workspaceFiles = await tryGetWorkspaceFiles(openPaths);
 
     let filesContent = notebookContent;
     if (workspaceFiles) {

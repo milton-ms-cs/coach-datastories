@@ -7,6 +7,26 @@ Custom Codio coach assistant for middle school students learning data science wi
 
 ---
 
+## Session: August 16, 2026
+
+### File access migrated from `codioIDE.workspace` to `codioIDE.files`
+
+Debugging coach-scratch against live Codio (Aug 2026) confirmed that **`codioIDE.workspace` does not exist in the Custom Assistant runtime** — `getFileTree()`/`readFile()` are always undefined, so the old `tryGetWorkspaceFiles()` supplement never read a single file (it silently returned empty every time).
+
+`tryGetWorkspaceFiles()` now uses the supported **`codioIDE.files`** namespace:
+
+- Discovers files with `codioIDE.files.getStructure()`. Note the shape: it returns a **name→value map** (a file's value is a leaf like `1`; a directory's value is a nested map), NOT an array of `{name, type, children}` nodes.
+- Reads text with `codioIDE.files.getContent(path)`.
+- Every call is guarded — if the API is unavailable the coach degrades to jupyterContext-only, exactly as before.
+- Notebooks already open (present in `jupyterContext`) are skipped so their bulky raw `.ipynb` JSON isn't sent twice; the supplement mainly picks up `ds_helpers.py`, CSVs, and unopened notebooks.
+- Same budgets as before: 40,000 chars total, 15,000 per file.
+
+The older notes below that describe `workspace.getFileTree()` as "unavailable in current environment, no fix needed" are superseded: it is *never* available, and the coach now has a working file channel.
+
+Docs: https://codio.github.io/client/codioIDE.files.html
+
+---
+
 ## Session: December 2, 2025
 
 ### Summary: Coach Now Fully Functional ✅
