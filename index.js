@@ -77,7 +77,7 @@ When students have column name issues, ask them to paste the output of ds.column
   const exitPhrases = ["thanks", "thank you", "bye", "done", "exit", "quit", "stop", "no thanks", "i'm good", "im good", "that's all", "thats all"];
 
   // Configuration
-  const VERSION = "1.6.0";
+  const VERSION = "1.7.0";
   const DEBUG_MODE = false;  // Set to true to see debug output
 
   // Try to read supporting files (python helpers, CSVs, other notebooks) via
@@ -224,6 +224,50 @@ ${assignmentName ? `\nAssignment: ${assignmentName}\n` : ''}
 The student says: ${initialInput}`;
   }
 
+  // ============================================================
+  // Session log — a hidden, shared workspace file (.coach-log.json) that every
+  // coach appends to (one entry per session, tagged with `coach`), summarizing
+  // how students use the coaches. Dot-prefixed so it never enters the LLM
+  // context. Deliberately records the student's questions: Codio's own course
+  // coach-log export logs only the userPrompt field, which is empty for
+  // messages-based coaches like these — this file is where the questions live.
+  // Sessions are never dropped (always appended). Logging is wrapped so it can
+  // never break the coach.
+  // ============================================================
+
+  const SESSION_LOG_PATH = ".coach-log.json";
+  const COACH_ID = "datastories";
+  const MAX_LOGGED_QUESTIONS = 50;
+
+  async function loadSessionHistory() {
+    const F = codioIDE.files;
+    if (!F || typeof F.getContent !== "function") return [];
+    try {
+      const parsed = JSON.parse(await F.getContent(SESSION_LOG_PATH));
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async function saveSessionHistory(history) {
+    const F = codioIDE.files;
+    if (!F || typeof F.add !== "function") return;
+    const text = JSON.stringify(history, null, 2);
+    try {
+      await F.add(SESSION_LOG_PATH, text);
+    } catch (e) {
+      // add() rejects when the file exists — delete and re-add
+      try {
+        if (typeof F.deleteFiles !== "function") return;
+        await F.deleteFiles([SESSION_LOG_PATH]);
+        await F.add(SESSION_LOG_PATH, text);
+      } catch (e2) {
+        // Logging must never break the coach
+      }
+    }
+  }
+
   async function onButtonPress() {
     codioIDE.coachBot.write(
       `Data Stories Coach v${VERSION} - Ask me about your data story!`,
@@ -263,6 +307,29 @@ The student says: ${initialInput}`;
       break;
     }
 
+    const sessionHistory = await loadSessionHistory();
+    const session = {
+      coach: COACH_ID,
+      started: new Date().toISOString(),
+      updated: null,
+      ended: null,
+      coachVersion: VERSION,
+      exchanges: 0,
+      questions: []
+    };
+    sessionHistory.push(session);
+
+    async function recordTurn(question) {
+      session.exchanges += 1;
+      if (session.questions.length < MAX_LOGGED_QUESTIONS) {
+        session.questions.push(String(question).slice(0, 300));
+      }
+      session.updated = new Date().toISOString();
+      await saveSessionHistory(sessionHistory);
+    }
+
+    await recordTurn(initialInput);
+
     messages.push({
       "role": "user",
       "content": await buildContextMessage(initialInput)
@@ -300,6 +367,8 @@ The student says: ${initialInput}`;
         break;
       }
 
+      await recordTurn(input);
+
       messages.push({
         "role": "user",
         "content": input
@@ -332,6 +401,9 @@ The student says: ${initialInput}`;
         messages.splice(1, 2); // drop the oldest assistant+user pair, keep messages[0] (context) intact
       }
     }
+
+    session.ended = new Date().toISOString();
+    await saveSessionHistory(sessionHistory);
 
     codioIDE.coachBot.write("You're welcome! Please feel free to ask any more questions about this course!");
     codioIDE.coachBot.showMenu();
