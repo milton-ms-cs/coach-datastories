@@ -22,7 +22,7 @@ node --check index.js        # syntax check
 node test/run-test.js        # in-memory Codio boxes from both units
 ```
 
-`index.js` exposes `window.__dataCoachTest` solely for the harness. `test/fixtures/` holds copies of the real `mlms.py`, `simple_llm.py`, `simple_image_llm.py` and a chatbot `main.py` from the box repos (`curriculum-setup-2627/courses/grade8-cs/`). Refresh them if the course libraries change.
+`index.js` exposes `window.__dataCoachTest` solely for the harness. `test/fixtures/` holds copies of the real `mlms.py`, `simple_llm.py`, `simple_image_llm.py` and a chatbot `main.py` from the course assignment repos. Refresh them if the course libraries change.
 
 ## What the boxes look like
 
