@@ -15,6 +15,10 @@ The repo is still named `coach-datastories`. Until v1.8.0 this was the **Data St
 
 Only the label (`Data & AI Coach`) changed.
 
+## Public repo: no student data, ever
+
+This repository is public, because Codio installs extensions from GitHub. Never commit anything that comes from a real student: names, emails, IDs, their code, questions, transcripts, `.coach-log.json` contents or rows from Codio exports. Paraphrased or "anonymized" snippets count too. Prompt examples and test fixtures must be made up from scratch. Git history is permanent, so check `git diff --cached` before every commit. Full rule: the parent `../CLAUDE.md`.
+
 ## Commands
 
 ```bash
