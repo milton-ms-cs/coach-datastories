@@ -105,7 +105,8 @@ global.window = {
         if (!env.inputs.length) throw new Error("no more input");
         return env.inputs.shift();
       },
-      ask: async function(req) {
+      ask: async function(req, opts) {
+        if (!opts || opts.stream !== false || opts.preventMenu !== true) { console.error("  FAIL ask() not called with stream:false + preventMenu"); failures++; }
         env.asks.push(JSON.parse(JSON.stringify(req)));
         return { result: "reply " + env.asks.length };
       }
@@ -248,7 +249,8 @@ eval(fs.readFileSync(path.join(__dirname, "..", "index.js"), "utf8"));
     env.asks = []; env.writes = [];
     const origAsk = global.window.codioIDE.coachBot.ask;
     let n = 0;
-    global.window.codioIDE.coachBot.ask = async function(req) {
+    global.window.codioIDE.coachBot.ask = async function(req, opts) {
+      if (!opts || opts.stream !== false || opts.preventMenu !== true) { console.error("  FAIL ask() not called with stream:false + preventMenu"); failures++; }
       env.asks.push(JSON.parse(JSON.stringify(req)));
       const r = replies[n++];
       if (between) between(n);
@@ -393,43 +395,79 @@ eval(fs.readFileSync(path.join(__dirname, "..", "index.js"), "utf8"));
   global.window.codioIDE.coachBot.getContext = gcOrig;
   check("first-turn getContext failure still answers with the saved files", env.asks.length === 1 && env.asks[0].messages[0].content.indexOf("reply = chat(") >= 0);
 
-  console.log("Strict mode (S1)");
-  const STRICT_HEAD = "## Right now: help this student try first";
-  const isStrict = function(i) { return env.asks[i].systemPrompt.indexOf(STRICT_HEAD) >= 0; };
-  const prior = [];
-  for (let i = 0; i < 2; i++) prior.push({ coach: "datastories", started: new Date(Date.now() - 86400000).toISOString(), exchanges: 10, questions: Array.from({ length: 10 }, function(_, k) { return "old question " + k; }) });
-  let sa = await converse(Object.assign({}, chatbot, { ".coach-log.json": JSON.stringify(prior) }), ["my loop is off", "bye"], []);
-  check("workspace history of 20 questions: first ask is strict", isStrict(0));
-  check("session logged strict + reason workspace", sa.strict === true && sa.strictReason === "workspace");
-  check("student never told about it", env.writes.every(function(w) { return !/strict|\bmode\b/i.test(w); }));
+  console.log("Try-first help: the model labels, the code decides (R5)");
+  const TRY_HEAD = "## Try-first help: label each message";
+  const recent = function(i) { return env.asks[i].messages[0].content; };
+  const day = 86400000;
+  const mkSession = function(extra) { return Object.assign({ coach: "datastories", started: new Date(Date.now() - day).toISOString(), exchanges: 3, questions: ["earlier one", "earlier two", "earlier three"], labels: ["other", "other", "other"] }, extra); };
 
-  const mk = function(extra) { return Object.assign({ coach: "datastories", started: new Date(Date.now() - 86400000).toISOString(), exchanges: 10, questions: Array.from({ length: 10 }, function(_, k) { return "old question " + k; }) }, extra); };
-  const oldLog = [mk({ started: new Date(Date.now() - 30 * 86400000).toISOString() }), mk({ started: new Date(Date.now() - 30 * 86400000).toISOString() }), mk({ coach: "python" }), mk({ coach: "python" })];
-  await converse(Object.assign({}, chatbot, { ".coach-log.json": JSON.stringify(oldLog) }), ["my loop is off", "bye"], []);
-  check("30-day-old and other-coach sessions don't count", !isStrict(0));
-  let sb = await converse(chatbot, ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10", "bye"], []);
-  check("fresh workspace: not strict on the first asks", !isStrict(0) && !isStrict(8));
-  check("strict from the 10th question (session)", isStrict(9) && sb.strict === true && sb.strictReason === "session");
+  await converse(chatbot, ["q1", "bye"], []);
+  check("system prompt always carries the try-first section", env.asks[0].systemPrompt.indexOf(TRY_HEAD) >= 0 && env.asks[0].systemPrompt.indexOf("start with [[try-first]]") < 0);
+  check("tone line adjusted", t.systemPrompt.indexOf("After the tag line, don't start every reply with the same words.") >= 0);
 
-  const attempt = "i think i need a loop that counts the cats";
-  let sc = await converse(chatbot, ["next", "show me", "what should i write", "next step", "just tell me", attempt, attempt + " first", "next", "next", "bye"], []);
-  check("5 next-step asks in a row turn it on", !isStrict(3) && isStrict(4) && sc.strictReason === "next-steps");
-  check("still on after one attempt", isStrict(5));
-  check("two attempts in a row turn it off", !isStrict(6) && sc.strictReleased === true);
-  check("stays off after more next asks", !isStrict(7) && !isStrict(8));
+  console.log("Tag parsing");
+  const rt = t.readModeTag;
+  check("[[ask]]", rt("[[ask]]\nHi").label === "ask" && rt("[[ask]]\nHi").text === "Hi");
+  check("**[[other]]**", rt("**[[other]]**\nHi").label === "other" && rt("**[[other]]**\nHi").text === "Hi");
+  check("backticked [[ask | try-first]]", rt("`[[ask | try-first]]`\nHi").label === "ask" && rt("`[[ask | try-first]]`\nHi").text === "Hi");
+  check("## [[attempt] (one bracket)", rt("## [[attempt]\nHi").label === "attempt" && rt("## [[attempt]\nHi").text === "Hi");
+  check("missing tag: label null", rt("Hello there").label === null && rt("Hello there").text === "Hello there");
+  const stray = rt("Part one.\n[[ask]]\nPart two.");
+  check("stray mid-text tag stripped", stray.label === null && stray.text.indexOf("[[") < 0 && stray.text.indexOf("Part two.") > 0);
+  check("[[1,2]] code untouched", rt("x = [[1,2]]\nprint(x)").text === "x = [[1,2]]\nprint(x)" && rt("[[1,2]]\nok").text === "[[1,2]]\nok");
+  check("historyReply keeps the tag", t.historyReply(rt("[[ask]]\nHi")) === "[[ask]]\nHi" && t.historyReply(rt("Hi")) === "[[other]]\nHi");
 
-  let sd = await converse(chatbot, ["q1", "q2", "q3", "bye"], [], function(n) { if (n === 1) env.files["main.py"] += "\nprint(1)\n"; });
-  check("fresh sessions with ordinary questions never go strict", !isStrict(0) && !isStrict(1) && !isStrict(2) && sd.strict === false);
-  // Files changed counts as an own attempt while strict is on.
-  let se = await converse(chatbot, ["next", "show me", "what should i write", "next step", "just tell me", "ok trying it", "ok again", "bye"], [], function(n) {
-    if (n === 5 || n === 6) env.files["main.py"] += "\nprint(" + n + ")\n";
-  });
-  check("changed files release strict mode too", isStrict(4) && !isStrict(6) && se.strictReleased === true);
+  let ta = await converse(chatbot, ["q1", "q2", "q3", "q4", "bye"], ["[[ask]]\nWhat did you try?", "**[[other]]**\nSure, here is the idea.", "No tag here.", "[[attempt]]"]);
+  check("write() never sees a tag", env.writes.every(function(w) { return w.indexOf("[[") < 0; }) && env.writes.indexOf("What did you try?") >= 0 && env.writes.indexOf("Sure, here is the idea.") >= 0);
+  check("history entries start with their tag", env.asks[1].messages[1].content === "[[ask]]\nWhat did you try?" && env.asks[2].messages[3].content === "[[other]]\nSure, here is the idea.");
+  check("reply with no tag is stored as other", env.asks[3].messages[5].content === "[[other]]\nNo tag here.");
+  check("tag-only reply = empty-reply path", ta.failedReplies === 1 && env.writes.indexOf("") < 0 && ta.labels.length === 3);
 
+  console.log("Chain: ask, ask, ask, other, attempt, ask");
+  const chain = ["c1", "c2", "c3", "c4", "c5", "c6"];
+  let tc = await converse(chatbot, chain.concat(["bye"]), ["[[ask]]\nA1", "[[ask]]\nA2", "[[ask]]\nA3", "[[other]]\nO", "[[attempt]]\nT", "[[ask]]\nA4"]);
+  check("labels logged", JSON.stringify(tc.labels) === JSON.stringify(["ask", "ask", "ask", "other", "attempt", "ask"]));
+  check("modes: normal, normal, try-first, then sticky, then attempt resets", JSON.stringify(tc.modes) === JSON.stringify(["normal", "normal", "try-first", "try-first", "normal", "normal"]));
+  check("strict fields", tc.strict === true && tc.strictReason === "model" && tc.strictReleased === true);
+  check("block tells the model the help per label", recent(2).indexOf("- [[ask]]: TRY-FIRST help") >= 0 && recent(2).indexOf("- [[attempt]]: NORMAL help") >= 0 && recent(0).indexOf("- [[ask]]: NORMAL help") >= 0);
+  check("turn 2 lists turn 1 with its label and the current question", recent(1).indexOf("1. [ask] c1") >= 0 && recent(1).indexOf("2. [current] c2") >= 0);
+  check("while try-first is on, other also gets try-first; attempt gets normal", recent(3).indexOf("- [[other]]: TRY-FIRST help") >= 0 && recent(4).indexOf("- [[attempt]]: NORMAL help") >= 0);
+  check("after the attempt the count restarts", recent(5).indexOf("- [[ask]]: NORMAL help") >= 0);
+
+  console.log("History across sessions");
+  const asks2 = { labels: ["ask", "ask"], questions: ["a1", "a2"], exchanges: 2 };
+  await converse(Object.assign({}, chatbot, { ".coach-log.json": JSON.stringify([mkSession(asks2)]) }), ["next please", "bye"], []);
+  check("asks from a recent same-coach session count", recent(0).indexOf("- [[ask]]: TRY-FIRST help") >= 0 && recent(0).indexOf("in the last 14 days: 3. In this session: 1.") >= 0);
+  await converse(Object.assign({}, chatbot, { ".coach-log.json": JSON.stringify([mkSession(Object.assign({ started: new Date(Date.now() - 30 * day).toISOString() }, asks2)), mkSession(Object.assign({ coach: "python" }, asks2))]) }), ["next please", "bye"], []);
+  check("30-day-old and other-coach sessions don't count", recent(0).indexOf("- [[ask]]: NORMAL help") >= 0 && recent(0).indexOf("a1") < 0 && recent(0).indexOf("in the last 14 days: 1.") >= 0);
+
+  console.log("Backstop at 10 questions");
+  const ten = []; for (let i = 1; i <= 10; i++) ten.push("question number " + i);
+  const tenReplies = []; for (let i = 0; i < 10; i++) tenReplies.push("[[other]]\nok " + i);
+  let tf = await converse(chatbot, ten.concat(["bye"]), tenReplies);
+  check("10th block lists TRY-FIRST for all three labels", ["ask", "attempt", "other"].every(function(l) { return recent(9).indexOf("- [[" + l + "]]: TRY-FIRST help") >= 0; }) && recent(8).indexOf("- [[attempt]]: NORMAL help") >= 0);
+  check("10th reply logged try-first with reason backstop", tf.modes[9] === "try-first" && tf.strict === true && tf.strictReason === "backstop");
+
+  console.log("Fallback context and fingerprint");
+  global.window.codioIDE.coachBot.getContext = async function() { return { files: [], get guidesPage() { throw new Error("guide broke"); } }; };
+  await converse(chatbot, ["help please", "bye"], []);
+  global.window.codioIDE.coachBot.getContext = origGetContext;
+  check("fallback context also carries <recent_questions>", recent(0).indexOf("couldn't read the student's files") >= 0 && recent(0).indexOf("<recent_questions>") >= 0);
+  await converse(chatbot, ["one", "two", "three", "bye"], []);
+  check("new questions alone never fire the files-changed note", env.asks.every(function(a) { return a.messages.every(function(m) { return m.content.indexOf("(Note: the student's files") !== 0; }); }));
+  env.files = Object.assign({}, chatbot);
+  const b1 = await t.buildContextMessage("q", false, [], { exchanges: 1, questions: ["q"] });
+  check("block lies outside the files block", b1.indexOf("<recent_questions>") > b1.indexOf("</files>"));
+
+  console.log("Unreadable log: still works, never writes");
   env.files = Object.assign({}, chatbot, { ".coach-log.json": "{not json" });
-  env.inputs = ["next", "show me", "what should i write", "next step", "just tell me", "next", "bye"]; env.asks = [];
+  env.inputs = ["q1", "q2", "bye"]; env.asks = [];
   await env.registered.fn();
-  check("unreadable log: strict still works, nothing written", env.files[".coach-log.json"] === "{not json" && isStrict(4));
+  check("recent block built from this session only; log untouched", env.files[".coach-log.json"] === "{not json" && recent(1).indexOf("1. [?] q1") >= 0 && recent(1).indexOf("2. [current] q2") >= 0);
+
+  console.log("Old phrase-list code is gone");
+  const srcText = fs.readFileSync(path.join(__dirname, "..", "index.js"), "utf8");
+  check("isNextStepAsk / updateStrict / STRICT_PROMPT removed", !/isNextStepAsk|updateStrict|STRICT_PROMPT\b|strictState/.test(srcText));
 
   console.log("Unreadable log file never gets overwritten");
   env.files = Object.assign({}, chatbot, { ".coach-log.json": "{not json" });
