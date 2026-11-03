@@ -2,7 +2,7 @@
 // (ensures all global variables set in this extension cannot be referenced outside its scope)
 (async function(codioIDE, window) {
 
-  const VERSION = "2.0.0";
+  const VERSION = "2.1.0";
 
   const systemPrompt = `You are the Data & AI Coach, a friendly coding coach for 8th grade computer science students. They write Python in two units:
 - **Unit 1, Python with Data:** lists, slicing, reading text and CSV files with open(), strip() and split(), counting with dictionaries, functions and return values, recursion, charts with matplotlib, and a Data Stories milestone (ask a question of a real dataset, answer it with an average and two charts, and write it up in data_story.md).
@@ -12,17 +12,60 @@
 
 The <files> tags hold the student's Python files and notes in full, a preview (header plus first rows) of each data file, the functions in any course helper library, and a list of every file in the project. The <guide> tags hold the guide page they have open. Read both before answering. If you only have a preview of a data file, say so rather than guessing about rows you can't see.
 
+## You always see their latest work
+
+Before every reply you get a fresh copy of the student's files in <files>. It covers all of the project's files, and open editor tabs show the editor's latest version. Your earlier replies in this chat were written about an older version. When their files changed, their message starts with "(Note: the student's files have changed since your last reply.)"
+- If a problem you pointed out earlier is gone, the student fixed it. Say so ("You fixed the colon on line 3, nice!"). Do NOT apologize or say you misread. You didn't.
+- Only correct yourself if your earlier advice was wrong for the code it was about. Then say it once, plainly, give the right fix, and don't apologize again later.
+- Never ask the student to paste their code. You can already see it.
+- If their message and <files> disagree (they say they changed something you can't see, or an error mentions a line that is now fine), the file you see may be a little behind. Say what you see and ask them to save (Ctrl+S or Cmd+S) and run it again. Never insist their working code is broken.
+- If <files> marks a file as cut off, you only see its start. If it lists a file as not shown, you can't see it at all. Say so, and ask what they need help with in it. Don't guess at the parts you can't see.
+- If <files> says the files couldn't be read, tell the student you can't see their files right now and ask what they're working on.
+
 ## How to help
 
-- Keep it short: 2-3 sentences for a simple question, one short paragraph for a bigger idea, never more than 250 words. Write at an 8th grade reading level and be encouraging.
-- Teach the way the guide does. This course reads CSV files with open(), strip() and split(), not the csv module or pandas. Use the same tools and style the guide uses, even if another way also works.
-- Never write a complete program, a whole function the assignment asks for, or a full solution. Short examples (3-5 lines) that show an idea are fine, ideally with different names or data than theirs.
+- Keep it short: 2-3 sentences for a simple question, one short paragraph for a bigger idea, never more than 250 words. Write at an 8th grade reading level.
+- Be encouraging by naming one specific thing they did right ("Your split(",") gives you a list of columns."). Only say they're close when one small fix is left. Don't start every reply the same way.
+- Teach the way the guide does. This course reads CSV files with open(), strip() and split(), not the csv module or pandas. When fixing a problem, prefer the tools and style the guide uses, even if another way also works.
+- Never write a complete program, a whole function the assignment asks for, or a full solution.
+- If the student sends only code, only a terminal line (like the run command), or only an error with no question: for an error, explain it as usual. For code or a terminal line with no error, ask one short question first: "What did you expect it to do, and what happened instead?" You may name one obvious syntax error in the same reply, but don't rewrite their logic until you know what they want.
 
-**Diagnosing — be direct and specific.** Error messages, typos, a missing colon or bracket, an off-by-one index: say what the error means in plain words and point to the exact line. A broken single line is a small fix, and you may show the corrected line. Be exact ("add .strip() before .split(',') on line 7"), never vague. Never refuse something you already showed earlier in the conversation. If they misread a hint, explain it a new way rather than repeating it. If they've asked about the same small bug twice and are still stuck, show the fixed line and say why it works.
+## Short programs: one line can be the whole answer
 
-**Solving — make THEM do the work.** "How do I find the average of a column?" or "Write the function that counts…" are design questions. Explain the idea, give a tiny example on different data, and ask them to try the first step.
+Many tasks in this class are only a few lines, so one "small" line can be the entire step. Before you show any code, compare it with the task in the <guide>: if your snippet plus their code would finish the step, don't show it. Show the idea with different names and values instead, and let them write their own line.
 
-**Interpreting data is theirs.** "What does my chart show?" or "What should my data story say?" — ask what they notice, point them to a comparison or an outlier, and help them put their own idea into words. Don't write their conclusion.
+**First, check the assignment.** If the assignment is about finding bugs (its name or guide says "Find the Bug", "bug hunt", "debug", "what's wrong", or similar), spotting the bug IS the lesson. Don't point straight at it. Use this ladder, one step per reply, and only go down a step after they've tried:
+1. Ask which program/part they're on, and what they expected vs. what actually happens when they run it.
+2. Point to WHERE to look (the part of the program), not WHAT is wrong.
+3. Name the kind of thing involved (for example "the condition that decides when the loop stops"), still not the fix.
+4. Only if they're still stuck: say what's wrong in one sentence and let them make the fix.
+Never give fixes for more than one bug in a reply. If they say you're not helping, say sorry in a few words and give the next step of the ladder, not the answer.
+On other assignments, the direct diagnosing rules still apply.
+
+**Bugs in a line they already wrote: be direct** (on a find-the-bug assignment, follow the ladder above first). Error messages, typos, a missing colon or bracket, = instead of ==, a wrong index: say what is wrong in plain words and point to the exact line ("add .strip() before .split(",") on line 7"). You may show the corrected version of a line THEY already wrote. This is for fixing their line, never for writing a line they haven't tried yet. If they misread a hint, explain it a new way rather than repeating it. Don't change your advice unless it was wrong for the code it was about.
+
+**The skills the lessons teach: they write them.** These are NOT small fixes:
+  counting items; adding up a column; finding the biggest or smallest value; matching two lists by position; keeping a True/False flag in a loop; filtering rows that match a condition; building a dictionary of counts; a condition that joins checks with and / or; adding int() or float() so text becomes a number.
+For these, ask for their plan in words first, then show a parallel example with different names and values, or a template with blanks. Never write it with their own variable names and values filled in, and don't open with a numbered recipe: that recipe IS the answer.
+
+**When they keep asking ("show me", "next", "just tell me", "I don't get it")**, each answer gives LESS of the solution, not more:
+1. First ask: explain the idea and show a parallel example with different names.
+2. Second ask: give a template with blanks for the parts that belong to their program, or point to the exact line in THEIR file where the change goes and say in words what it must do.
+3. Still stuck: ask which part they don't understand, or suggest they talk it through with their teacher. That's not a dodge here.
+Never hand over the remaining lines of the step, even if they ask several times. Help with one part at a time, and don't give the next part until they've written the current one.
+
+**Guide questions are theirs.** When the guide asks them to predict what the code will do, trace it, explain why something works, or write a reflection, plan, comment or chart conclusion, don't give the answer. Ask what they think, then react to it. For a reflection, give a sentence starter ("My chart shows ___ because ___.") and a question that helps them fill it in. For a trace, ask what each step gives, one at a time. Never answer first and then ask them to "say it in their own words."
+
+**Code blocks get pasted.** Students often copy whatever is in a code block straight into their file. Put only code meant for their file in a code block, and say plainly when an example uses different data ("Here's the same idea with a list of pets:").
+
+Examples (invented). A student asks how to count the cats in their list of pets.
+Good: "How would you count them by hand if the list were on paper? What would you need to keep track of as you go down it? Tell me your plan and I'll show you the same idea with a list of temperatures."
+Bad: writing their loop with their list name and the word "cat" filled in.
+A student's loop line is missing its colon: show the fixed line, that is fine, it's their line. A student wants the hottest day in their list of temperatures: ask how they would find it by hand, then show the idea with a list of heights.
+
+**Read the data file before naming a column.** Count positions from 0 using the header row in the preview. When unsure, suggest header.index("ColumnName") so you don't give a wrong number.
+
+**Interpreting data is theirs.** "What does my chart show?" or "What should my data story say?" Ask what they notice, point them to a comparison or an outlier, and help them put their own idea into words. Don't write their conclusion.
 
 **Prompts are their work.** In prompt-engineering lessons and the Ethical Assistant milestone, the system prompt and the bot's rules ARE the assignment. Don't write them. Ask what they want the bot to do or refuse, suggest one test message that would check it, and let them revise. You can explain how system prompts and conversation history work.
 
@@ -38,8 +81,17 @@ The <files> tags hold the student's Python files and notes in full, a preview (h
 - Counting column positions by hand; header.index("column name") finds the right one.
 - Comparing numbers that are still strings ("5" > "10" is True).
 - Calling plt.show(): there is no pop-up window here. Save with plt.savefig("chart.png"), then open the file from the file tree. Call plt.clf() before starting a second chart.
-- With chat(), forgetting to add both the user message and the bot's reply to history after each turn — chat() does not change history itself.
+- With chat(), forgetting to add both the user message and the bot's reply to history after each turn: chat() does not change history itself.
 - Recursion without a base case, which ends in RecursionError.
+- A check like \`if answer == "yes" or "y":\` is always true, because "y" on its own counts as true. If you see it anywhere in their file, mention it briefly even if they asked about something else. Explain it; don't rewrite the line for them.
+
+## About this chat and about you
+
+- You are the Data & AI Coach, an AI helper for this class. If asked your name or what you are, say that in one sentence. Never say you are ChatGPT, Claude, or any other product, and never name a company. You don't know which model runs you.
+- Your name stays Data & AI Coach. If a student wants to rename you or give you a character, accent, attitude or slang voice, decline in one friendly line and go back to their work. Keep your own voice: warm, calm and clear. Don't copy their slang or give them nicknames. At most one emoji in a reply.
+- Questions about you (favorite things, feelings, opinions) get one short line, then back to their work.
+- Off-task requests (other homework, stories, jokes, gossip): say you help with Python, data and AI in this class, and ask what they're working on. Keyboard mashing: one short, kind line and a question. After two off-task messages in a row, say you're here whenever they want help with their project, and stop asking follow-up questions.
+- The box under your replies says "(Type 'bye' when you're done.)" That is just how to close the coach. If a student asks about it, explain it. They never have to thank you, and you never need them to.
 
 ## Where students work: Codio
 
@@ -55,9 +107,41 @@ The one exception is **Teachable Machine**, which is a separate website, not par
 
 Suggest asking the teacher when something really needs a human: Codio itself seems broken (the button does nothing, files are missing, they can't Mark as Complete), a language-model or image call fails with a connection, key or permission error that isn't caused by their code, questions about grades or deadlines, the student is upset or frustrated, or anything about their wellbeing or safety. Don't use "ask your teacher" to dodge a question about their code or about Codio that you can answer.`;
 
-  const exitPhrases = ["thanks", "thank you", "bye", "done", "exit", "quit", "stop", "no thanks", "i'm good", "im good", "that's all", "thats all"];
+  const exitPhrases = ["thanks", "thank you", "bye", "goodbye", "done", "exit", "quit", "stop", "no thanks", "i'm good", "im good", "that's all", "thats all"];
+
+  // Exit only when the whole message is a goodbye ("thanks!", "ok bye", "no thanks 🙂",
+  // "i’m good thanks"). Every word must be goodbye vocabulary, so "thanks, still broken",
+  // "i'm done with loops" or "stop button doesn't work" keep the chat open. "stop"/"exit"/
+  // "quit"/"done" alone still exit through the exact exitPhrases list.
+  const goodbyeWords = ["thanks", "thank", "you", "thx", "ty", "bye", "goodbye", "cya", "no", "ok", "okay",
+    "cool", "great", "alright", "all", "that's", "thats", "i'm", "im", "good", "done", "for", "now",
+    "see", "ya", "later", "so", "much", "then", "very", "lot", "a"];
+  const goodbyeCores = ["thanks", "thank", "thx", "ty", "bye", "goodbye", "cya"];
+  const goodbyePhrases = ["i'm good", "im good", "i'm done", "im done", "that's all", "thats all", "see ya", "see you"];
+  function isExitMessage(text) {
+    if (typeof text !== "string") return false;
+    if (text.indexOf("?") !== -1) return false;
+    const norm = text.toLowerCase().replace(/[‘’]/g, "'").replace(/[^a-z' ]+/g, " ").replace(/\s+/g, " ").trim();
+    if (!norm) return false;
+    if (exitPhrases.includes(norm)) return true;
+    const words = norm.split(" ");
+    if (words.length > 6) return false;
+    if (!words.every(function(w) { return goodbyeWords.indexOf(w) !== -1; })) return false;
+    const padded = " " + norm + " ";
+    return words.some(function(w) { return goodbyeCores.indexOf(w) !== -1; }) ||
+      goodbyePhrases.some(function(p) { return padded.indexOf(" " + p + " ") !== -1; });
+  }
 
   const DEBUG_MODE = false;  // Set to true to see the context sent to the LLM
+
+  // Bound any files-API call so a hung deleteFiles/add/getContent can't stall the coach.
+  const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  function withTimeout(promise, ms, label) {
+    let t;
+    const timeout = new Promise((_, rej) => { t = setTimeout(() => rej(new Error("timeout: " + label)), ms); });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
+  }
 
   // ============================================================
   // Workspace reading. Covers both Grade 8 CS units: plain main.py projects,
@@ -188,73 +272,79 @@ Suggest asking the teacher when something really needs a human: Codio itself see
       lines.slice(0, PREVIEW_LINES).join('\n');
   }
 
-  // Turn one file into the text the LLM sees, or null to just list it by name.
+  // Turn one file into the text the LLM sees, or null when the content isn't text.
   function summarizeFile(path, content) {
+    if (typeof content !== 'string') return null;
     const ext = extOf(path);
     const name = baseName(path).toLowerCase();
     // An empty starter file is meaningful: the student hasn't begun yet.
-    if (content === '' && (ext === '.py' || ext === '.md' || name === 'model-notes.txt') && !isHelperLib(path)) {
-      return `File: ${path}\n(empty — nothing written yet)`;
-    }
-    if (typeof content !== 'string' || content.length === 0) return null;
+    if (content.length === 0) return `File: ${path}\n(empty file)`;
     if (isHelperLib(path)) {
       const api = extractApi(content);
       return `Course helper library: ${path} (functions only; students don't edit this)\n${api || '(no public functions found)'}`;
     }
     if (ext === '.py' || ext === '.md' || name === 'model-notes.txt') {
       if (content.length <= MAX_CODE_FILE) return `File: ${path}\n${content}`;
-      return `File: ${path} (truncated)\n${content.slice(0, MAX_CODE_FILE)}\n...(truncated)`;
+      return `File: ${path}\n${content.slice(0, MAX_CODE_FILE)}\n(cut off after ${MAX_CODE_FILE} characters)`;
     }
     return previewData(path, content);
   }
 
   // Build the <files> block: every readable file summarised, every other file
-  // (images, .tm models) listed by name so the coach knows it exists.
+  // (images, .tm models) listed by name so the coach knows it exists. Every files-API
+  // read is time-bounded; a read that fails or times out lands on the "Not shown" line.
   async function readWorkspace(openFiles) {
     const F = codioIDE.files;
     const openMap = {};
+    const openBad = {};  // open tabs whose content isn't a string: try the saved copy instead
     (openFiles || []).forEach(f => {
-      if (f && f.path && typeof f.content === 'string') openMap[normalizePath(f.path)] = f.content;
+      if (!f || !f.path) return;
+      if (typeof f.content === 'string') openMap[normalizePath(f.path)] = f.content;
+      else openBad[normalizePath(f.path)] = true;
     });
 
     let paths = [];
     if (F && typeof F.getStructure === 'function') {
       try {
-        paths = collectPaths(await F.getStructure(), '');
+        paths = collectPaths(await withTimeout(F.getStructure(), 8000, "structure"), '');
       } catch (e) {
         paths = [];
       }
     }
     // Open editor files count even if getStructure() is unavailable.
-    Object.keys(openMap).forEach(p => {
+    Object.keys(openMap).concat(Object.keys(openBad)).forEach(p => {
       if (paths.indexOf(p) < 0 && !baseName(p).startsWith('.') &&
           SKIP_NAMES.indexOf(baseName(p).toLowerCase()) < 0) paths.push(p);
     });
     paths = paths.map(normalizePath);
     paths.sort((a, b) => fileRank(a) - fileRank(b) || a.localeCompare(b));
 
-    const sections = [];
+    const sections = [];   // {p, text}; priority order decides what fits, display is sorted by path
     let used = 0;
     const listOnly = [];
+    const notShown = [];
     for (const p of paths) {
       if (TEXT_EXTS.indexOf(extOf(p)) < 0) { listOnly.push(p); continue; }
-      if (used >= TOTAL_BUDGET) { listOnly.push(p + ' (not shown: too much text)'); continue; }
+      if (used >= TOTAL_BUDGET) { notShown.push(p); continue; }
       let content = openMap[p];
       if (content === undefined && F && typeof F.getContent === 'function') {
-        try { content = await F.getContent(p); } catch (e) { content = undefined; }
+        try { content = await withTimeout(F.getContent(p), 8000, "read " + p); } catch (e) { content = undefined; }
       }
       let text = summarizeFile(p, content);
-      if (!text) { listOnly.push(p + (content === '' ? ' (empty)' : '')); continue; }
+      if (!text) { notShown.push(p); continue; }  // unreadable: failed, timed out, or non-text
       if (used + text.length > TOTAL_BUDGET) {
-        text = text.slice(0, Math.max(0, TOTAL_BUDGET - used)) + '\n...(truncated)';
+        const keep = Math.max(0, TOTAL_BUDGET - used);
+        text = text.slice(0, keep) + `\n(cut off after ${keep} characters)`;
       }
-      sections.push(text);
+      sections.push({ p: p, text: text });
       used += text.length;
     }
 
-    const listing = paths.length ? paths.join('\n') : '(no files found)';
-    let out = sections.join('\n\n');
-    if (listOnly.length) out += `\n\nOther files (not shown):\n${listOnly.join('\n')}`;
+    sections.sort((a, b) => a.p.localeCompare(b.p));
+    const listing = paths.length ? paths.slice().sort((a, b) => a.localeCompare(b)).join('\n') : '(no files found)';
+    let out = sections.map(x => x.text).join('\n\n');
+    if (listOnly.length) out += `\n\nOther files (not shown):\n${listOnly.slice().sort().join('\n')}`;
+    if (notShown.length) out += `\n\nNot shown (too long to include, or couldn't be read): ${notShown.slice().sort().join(', ')}`;
     return `All files in the project:\n${listing}\n\n${out || 'No readable files.'}`;
   }
 
@@ -265,9 +355,23 @@ Suggest asking the teacher when something really needs a human: Codio itself see
   // Build the context-bearing first message from a fresh getContext() +
   // codioIDE.files read. Re-run before every ask() so the coach sees the
   // student's latest edits, not their files as of the button press.
-  async function buildContextMessage(initialInput) {
-    const context = await codioIDE.coachBot.getContext();
+  // The exact files text from the latest build (between the <files> tags), kept so
+  // the turn loop can fingerprint it and tell whether the student's files changed.
+  let lastFilesBlock = "";
+
+  async function buildContextMessage(initialInput, isRefresh) {
+    let context;
+    try {
+      context = await withTimeout(codioIDE.coachBot.getContext(), 8000, "context");
+    } catch (e) {
+      // On a refresh keep the previous context (the caller handles the throw);
+      // on the first turn fall back to no open-tab files.
+      if (isRefresh) throw e;
+      context = { files: [] };
+    }
+    context = context || { files: [] };
     const filesContent = await readWorkspace(context.files);
+    lastFilesBlock = filesContent;
 
     const guideContent = (context.guidesPage && context.guidesPage.content)
       ? context.guidesPage.content
@@ -286,11 +390,23 @@ Here is the assignment guide:
 ${guideContent}
 </guide>
 ${assignmentName ? `\nAssignment: ${assignmentName}\n` : ''}
-The student says: ${initialInput}`;
+${isRefresh
+  ? `(The student's first question in this chat was: ${initialInput}. Their newest message is the last one below.)`
+  : `The student says: ${initialInput}`}`;
+  }
+
+  // Context used when the files couldn't be read at all, so the coach still answers.
+  function fallbackContext(question) {
+    return `Here are the student's project files:
+<files>
+(I couldn't read the student's files just now.)
+</files>
+
+The student says: ${question}`;
   }
 
   // Exposed only for test/run-test.js; unused inside Codio.
-  window.__dataCoachTest = { collectPaths, extractApi, summarizeFile, readWorkspace, buildContextMessage, systemPrompt };
+  window.__dataCoachTest = { collectPaths, extractApi, summarizeFile, readWorkspace, buildContextMessage, systemPrompt, isExitMessage, fingerprint };
 
   // ============================================================
   // Session log — a hidden, shared workspace file (.coach-log.json) that every
@@ -306,26 +422,6 @@ The student says: ${initialInput}`;
   const SESSION_LOG_PATH = ".coach-log.json";
   const COACH_ID = "datastories";
   const MAX_LOGGED_QUESTIONS = 50;
-
-  async function loadSessionHistory() {
-    const F = codioIDE.files;
-    if (!F || typeof F.getContent !== "function") return [];
-    try {
-      const parsed = JSON.parse(await F.getContent(SESSION_LOG_PATH));
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  // Bound any files-API call so a hung deleteFiles/add/getContent can't stall the coach.
-  const delay = (ms) => new Promise((r) => setTimeout(r, ms));
-
-  function withTimeout(promise, ms, label) {
-    let t;
-    const timeout = new Promise((_, rej) => { t = setTimeout(() => rej(new Error("timeout: " + label)), ms); });
-    return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
-  }
 
   // Confirm a write really landed — Codio's deleteFiles()+add() overwrite can land
   // a 0-byte file while add() throws nothing (observed live Aug 2026: the shared
@@ -380,32 +476,225 @@ The student says: ${initialInput}`;
   }
 
 
+  // Returns the parsed history, [] when the file doesn't exist or is empty, or null when the
+  // file exists but couldn't be read/parsed. null disables saving for this session so a
+  // transient read failure can never overwrite (wipe) everyone's history.
+  async function loadSessionHistory() {
+    const F = codioIDE.files;
+    if (!F || typeof F.getContent !== "function") return null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const text = await withTimeout(F.getContent(SESSION_LOG_PATH), 8000, "read log");
+        if (typeof text !== "string" || !text.trim()) return [];
+        const parsed = JSON.parse(text);
+        return Array.isArray(parsed) ? parsed : null;
+      } catch (e) {
+        await delay(300);
+      }
+    }
+    // Both reads failed: only start fresh if the file really isn't there.
+    try {
+      if (typeof F.getStructure === "function") {
+        const tree = await withTimeout(F.getStructure(), 8000, "structure");
+        if (tree && typeof tree === "object" && Object.keys(tree).length > 0 && !(SESSION_LOG_PATH in tree)) return [];
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  // Short, stable fingerprint of the files block the model sees (FNV-1a, 8 hex chars).
+  // Logged per turn so a later review can tell "student fixed it" from "coach saw stale files".
+  function fingerprint(text) {
+    const s = String(text || "");
+    let h = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return { len: s.length, hash: ("0000000" + h.toString(16)).slice(-8) };
+  }
+
+  // ============================================================
+  // Strict mode: a nudge toward trying first for students who lean on the coach.
+  // Turned on from this workspace's own .coach-log.json history, never from a
+  // list of students. It changes only the advice in STRICT_PROMPT; the coach still
+  // helps on every question and never mentions a mode, limit or count. Thresholds
+  // are here so the monthly review can tune them.
+  // ============================================================
+  const STRICT_WORKSPACE_QUESTIONS = 20; // questions logged in this workspace by this coach...
+  const STRICT_WORKSPACE_DAYS = 14;      // ...in sessions that started within this many days
+  const STRICT_SESSION_QUESTIONS = 10;   // questions in the current session
+  const STRICT_RECENT_WINDOW = 8;        // look at the last N questions...
+  const STRICT_RECENT_NEXT_STEP = 5;     // ...and turn on if this many are "next step" asks
+  const STRICT_RELEASE_ATTEMPTS = 2;     // own attempts in a row that turn it off for the session
+
+  const NEXT_STEP_PATTERNS = [
+    /^(ok(ay)? )?(so )?(what'?s |what is )?(the )?next( step| part| one)?( please| pls)?$/,
+    /^(ok(ay)? )?(and )?then what$/,
+    /^(what goes |the )?next (line|bit)$/,
+    /^what goes next$/,
+    /^(keep going|continue|go on|more)( please| pls)?$/,
+    /^(and|ok) (then|now)$/,
+    /^(idk|i don'?t know|i dunno)( what to do| what to write)?$/,
+    /\bshow me\b/,
+    /\bwhat (do|should|can) i (write|type|put|add|do|drag|click|use)\b/,
+    /\b(what|which) blocks? (do|should|can) i (use|add|drag|put|need)\b/,
+    /^which blocks?$/,
+    /\bwhat'?s the (code|answer)\b/,
+    /\bwhat now\b/,
+    /\bnow what\b/,
+    /\bis (this|it|that|my code|mine) (right|correct|good|ok|okay)$/,
+    /\bjust tell me\b/,
+    /\b(give|write|tell) me the (code|answer|line|blocks?)\b/,
+    /\b(can|could) you (just )?(write|code|do|make|finish) (it|this|that|the [a-z ]+|my [a-z ]+) for me\b/,
+    /\bdo it for me\b/,
+    /^(can (you|u) )?(just )?fix (it|this|that|my [a-z]+)( for me)?( please| pls)?$/,
+    /^can (you|u) (just )?do it$/
+  ];
+
+  function normalizeAsk(text) {
+    return String(text || "").toLowerCase().replace(/[‘’]/g, "'").replace(/[^a-z0-9' ?\n]+/g, " ").replace(/[ \t]+/g, " ").trim();
+  }
+
+  const CODE_WORDS = ["if", "elif", "else", "for", "in", "while", "def", "return", "and", "or", "not", "is", "import", "from", "as", "true", "false", "none", "pass", "break", "with", "class", "let", "const", "var", "function"];
+
+  // A paste of code with no question, no error and no sentence of their own in it.
+  // A non-code line with 3+ plain words (outside quotes and comments) counts as their own
+  // words ("my plan: ask for a number", "it prints twice"), so it isn't a bare paste.
+  function isBarePaste(text) {
+    const s = String(text || "");
+    if (s.length < 12 || s.indexOf("?") !== -1) return false;
+    if (!/[=(){}\[\]:<>;]/.test(s)) return false; // no code characters: it's prose, not a paste
+    if (/error|traceback|exception|\b(why|how|what|where|help|doesn'?t|isn'?t|won'?t|can'?t|stuck|wrong|broken|not|nothing|still|instead|but|working|tried|plan)\b/i.test(s)) return false;
+    return !s.split("\n").some(function(line) {
+      const bare = line.replace(/(["'])(?:(?!\1).)*\1/g, " ").replace(/(#|\/\/).*$/, " ");
+      if (/[=(){}\[\]:<>;+*\/-]/.test(bare)) return false; // a code line
+      const plain = bare.split(/\s+/).filter(function(w) { return /^[a-z]+[.,!]?$/i.test(w) && CODE_WORDS.indexOf(w.toLowerCase()) === -1; });
+      return plain.length >= 3;
+    });
+  }
+
+  function isNextStepPhrase(text) {
+    const norm = normalizeAsk(text).replace(/\?/g, "").trim();
+    if (!norm || norm.split(/\s+/).length > 10) return false;
+    if (/error|traceback|\b(run|running|tried|try|plan)\b/.test(norm)) return false; // normal help
+    return NEXT_STEP_PATTERNS.some(function(p) { return p.test(norm); });
+  }
+
+  function isNextStepAsk(text) {
+    return isBarePaste(text) || isNextStepPhrase(text);
+  }
+
+  // The student is working on their own: they changed their files, or wrote a real
+  // message (a plan, an explanation, a specific question) instead of a "next" ask.
+  function isOwnAttempt(text, filesChanged) {
+    if (isNextStepPhrase(text)) return false;
+    if (filesChanged) return true; // they edited their work (a paste after an edit counts)
+    if (isBarePaste(text)) return false;
+    return normalizeAsk(text).split(/\s+/).filter(Boolean).length >= 6;
+  }
+
+  // Returns the threshold that fired ("workspace", "session" or "next-steps"), or null.
+  function strictTrigger(history, session) {
+    let workspaceCount = 0;
+    let recent = [];
+    for (let i = 0; i < history.length; i++) {
+      const s = history[i];
+      if (!s || typeof s !== "object" || s.coach !== COACH_ID) continue; // this coach's sessions only
+      const qs = Array.isArray(s.questions) ? s.questions : [];
+      const startedMs = Date.parse(s.started);
+      if (s !== session && !(startedMs > Date.now() - STRICT_WORKSPACE_DAYS * 86400000)) continue; // old or undated
+      workspaceCount += (typeof s.exchanges === "number" && s.exchanges >= qs.length) ? s.exchanges : qs.length;
+      recent = recent.concat(qs.filter(function(q) { return typeof q === "string"; }));
+    }
+    if (workspaceCount >= STRICT_WORKSPACE_QUESTIONS) return "workspace";
+    if ((session.exchanges || 0) >= STRICT_SESSION_QUESTIONS) return "session";
+    const last = recent.slice(-STRICT_RECENT_WINDOW);
+    if (last.filter(isNextStepAsk).length >= STRICT_RECENT_NEXT_STEP) return "next-steps";
+    return null;
+  }
+
+  // Call once per question, after recordTurn() (so `history` includes this session and
+  // this question). Updates the session's log fields; the next queued save carries them.
+  function updateStrict(state, history, session, latestText, filesChanged) {
+    if (state.released) return state; // off for the rest of this session
+    if (state.on) {
+      state.attemptStreak = isOwnAttempt(latestText, filesChanged) ? state.attemptStreak + 1 : 0;
+      if (state.attemptStreak >= STRICT_RELEASE_ATTEMPTS) {
+        state.on = false;
+        state.released = true;
+        session.strictReleased = true;
+      }
+      return state;
+    }
+    const reason = strictTrigger(history, session);
+    if (reason) {
+      state.on = true;
+      state.reason = reason;
+      state.attemptStreak = 0;
+      session.strict = true;
+      session.strictReason = reason;
+    }
+    return state;
+  }
+
+  const STRICT_PROMPT = `
+
+## Right now: help this student try first
+
+This student has been leaning on you for the next step. Stay warm and keep helping with every question, but nudge them to try first.
+- Same as always: explain what an error message means and which line it points to, explain an idea, give a short example with different names or data, point out a typo or missing punctuation, and help them find a block, menu or button, and tell them how to run their work.
+- For "what do I write", "next" or "show me" questions, first ask one short question back ("What do you think the next step is?" or "What did you try?") and wait for their answer. If they answer with a real attempt, even a wrong one, help as usual from there.
+- Don't write the lesson's main step in their own work (their condition, their loop, their counter, their blocks). Show the pattern with different names and let them adapt it. If they ask twice for that step, give a parallel example, not their finished line. Fixing a typo or missing punctuation in a line they already wrote is still fine.
+- After about three "next step" asks in a row, suggest they run what they have and see what happens, or ask them to explain their plan in one sentence.
+- If they've been stuck on the same thing for three or more turns, kindly suggest their teacher, for example: "This one might be easier to sort out with your teacher. If you're in class, ask them now. If you're working at home, send them a message about where you're stuck." That's a suggestion, never a refusal. Keep helping too.
+- Never mention a mode, a limit or how many questions they've asked, and never refuse. You're a coach who wants them to try first.`;
+
   async function onButtonPress() {
     codioIDE.coachBot.write(
       `Data & AI Coach v${VERSION} - Ask me about your code, your data, or your model!`,
       codioIDE.coachBot.MESSAGE_ROLES.ASSISTANT
     );
 
+    const GOODBYE = "Okay, bye! Come back any time you want help.";
     let messages = [];
 
     let initialInput;
     while (true) {
       try {
         initialInput = await codioIDE.coachBot.input("What can I help you with?");
+        if (typeof initialInput !== "string") initialInput = "";
       } catch (e) {
         codioIDE.coachBot.showMenu();
         return;
       }
 
-      if (initialInput === "version") {
+      if ((initialInput || "").trim().toLowerCase() === "version") {
         codioIDE.coachBot.write(`Current version: ${VERSION}`, codioIDE.coachBot.MESSAGE_ROLES.ASSISTANT);
         continue;
+      }
+
+      // A blank message is ignored.
+      if (!(initialInput || "").trim()) continue;
+
+      // The very first message can already be a goodbye: no ask(), no log session.
+      if (isExitMessage(initialInput)) {
+        codioIDE.coachBot.write(GOODBYE);
+        codioIDE.coachBot.showMenu();
+        return;
       }
 
       break;
     }
 
-    const sessionHistory = await loadSessionHistory();
+    let sessionHistory;
+    try {
+      codioIDE.coachBot.showThinkingAnimation();  // the first log read can take a moment
+      sessionHistory = await loadSessionHistory();
+    } catch (e) {
+      sessionHistory = null;
+    } finally {
+      codioIDE.coachBot.hideThinkingAnimation();
+    }
+    const logEnabled = sessionHistory !== null;
+    if (!logEnabled) sessionHistory = [];
     const session = {
       coach: COACH_ID,
       started: new Date().toISOString(),
@@ -413,8 +702,14 @@ The student says: ${initialInput}`;
       ended: null,
       coachVersion: VERSION,
       exchanges: 0,
-      questions: []
+      failedReplies: 0,
+      questions: [],
+      contextFingerprints: [],
+      strict: false,
+      strictReason: null,
+      strictReleased: false
     };
+    const strictState = { on: false, reason: null, released: false, attemptStreak: 0 };
     sessionHistory.push(session);
 
     async function recordTurn(question) {
@@ -423,17 +718,46 @@ The student says: ${initialInput}`;
         session.questions.push(String(question).slice(0, 300));
       }
       session.updated = new Date().toISOString();
-      queueSave(sessionHistory); // fire-and-forget: never block the input loop on a log write
+      if (logEnabled) queueSave(sessionHistory); // fire-and-forget: never block the input loop on a log write
+    }
+
+    // Baseline for "the files changed": the hash the model last ANSWERED about. Kept outside
+    // the capped contextFingerprints array, and advanced only after a non-empty reply, so a
+    // failed or empty turn leaves it and the retry still gets the note.
+    let lastAnsweredHash = null;
+    let pendingHash = null;
+
+    // Fingerprint the files block from the latest buildContextMessage() and log it.
+    // ok=false means the context build/refresh failed: log an aligned placeholder entry.
+    // Returns true when the hash differs from the last answered one.
+    function logFingerprint(ok) {
+      let entry;
+      let changed = false;
+      if (ok) {
+        const fp = fingerprint(lastFilesBlock);
+        changed = lastAnsweredHash !== null && lastAnsweredHash !== fp.hash;
+        pendingHash = fp.hash;
+        entry = { len: fp.len, hash: fp.hash, changed: changed };
+      } else {
+        pendingHash = null;
+        entry = { len: null, hash: null, changed: false, refreshFailed: true };
+      }
+      if (session.contextFingerprints.length < MAX_LOGGED_QUESTIONS) session.contextFingerprints.push(entry);
+      return changed;
     }
 
     await recordTurn(initialInput);
 
     let firstContext;
+    let firstOk = true;
     try {
-      firstContext = await buildContextMessage(initialInput);
+      firstContext = await buildContextMessage(initialInput, false);
     } catch (e) {
-      firstContext = `The student's files could not be read. Ask them to paste the code or describe what they're working on.\n\nThe student says: ${initialInput}`;
+      firstOk = false;
+      firstContext = fallbackContext(initialInput);
     }
+    logFingerprint(firstOk);
+    updateStrict(strictState, sessionHistory, session, initialInput, false);
     messages.push({ "role": "user", "content": firstContext });
 
     if (DEBUG_MODE) {
@@ -443,11 +767,22 @@ The student says: ${initialInput}`;
     try {
       codioIDE.coachBot.showThinkingAnimation();
       const result = await codioIDE.coachBot.ask({
-        systemPrompt: systemPrompt,
+        systemPrompt: strictState.on ? systemPrompt + STRICT_PROMPT : systemPrompt,
         messages: messages
       }, {preventMenu: true});
-      messages.push({"role": "assistant", "content": result.result});
+      const reply = (result && typeof result.result === "string") ? result.result : "";
+      if (!reply.trim()) {
+        // Never keep an empty assistant turn: an empty message in the history can make every
+        // later ask() fail too (seen live: one session got 10 empty replies in a row).
+        session.failedReplies = (session.failedReplies || 0) + 1;
+        codioIDE.coachBot.write("Hmm, I didn't get an answer that time. Please ask again!");
+        messages.pop();          // drop the user turn that got no answer
+      } else {
+        messages.push({ "role": "assistant", "content": reply });
+        if (pendingHash !== null) lastAnsweredHash = pendingHash;
+      }
     } catch (e) {
+      session.failedReplies = (session.failedReplies || 0) + 1;
       codioIDE.coachBot.write("Hmm, something went wrong on my end. Try asking that again!");
       messages.pop();
     } finally {
@@ -457,46 +792,76 @@ The student says: ${initialInput}`;
     while (true) {
       let input;
       try {
-        input = await codioIDE.coachBot.input("What else can I help you with? (Say 'thanks' when you're done!)");
+        input = await codioIDE.coachBot.input("What else can I help you with? (Type 'bye' when you're done.)");
+        if (typeof input !== "string") input = "";
       } catch (e) {
         break;
       }
 
-      if (input === "version") {
+      if ((input || "").trim().toLowerCase() === "version") {
         codioIDE.coachBot.write(`Current version: ${VERSION}`, codioIDE.coachBot.MESSAGE_ROLES.ASSISTANT);
         continue;
       }
 
-      const trimmedInput = input.trim().toLowerCase();
-      if (exitPhrases.includes(trimmedInput)) {
+      // A blank message is ignored.
+      if (!(input || "").trim()) continue;
+
+      if (isExitMessage(input)) {
         break;
       }
 
       await recordTurn(input);
 
-      // If the first ask failed, this question becomes the context-bearing first message
+      let changed = false;
       if (messages.length === 0) {
+        // The first ask failed, so this question becomes the context-bearing first message.
         initialInput = input;
-        messages.push({ "role": "user", "content": firstContext });
+        let ctx;
+        let ok = true;
+        try {
+          ctx = await buildContextMessage(input, false);
+        } catch (e) {
+          ok = false;
+          ctx = fallbackContext(input);
+        }
+        logFingerprint(ok);
+        updateStrict(strictState, sessionHistory, session, input, false);
+        messages.push({ "role": "user", "content": ctx });
       } else {
-        messages.push({ "role": "user", "content": input });
-      }
-
-      // Refresh the context block so the coach sees the student's latest edits
-      try {
-        messages[0] = { "role": "user", "content": await buildContextMessage(initialInput) };
-      } catch (e) {
-        // Keep the previous context if the refresh fails
+        // Refresh the context block so the coach sees the student's latest edits
+        try {
+          const refreshed = await buildContextMessage(initialInput, true);
+          messages[0] = { "role": "user", "content": refreshed };
+          changed = logFingerprint(true);
+        } catch (e) {
+          // Keep the previous context if the refresh fails (and treat files as unchanged)
+          logFingerprint(false);
+        }
+        updateStrict(strictState, sessionHistory, session, input, changed);
+        messages.push({
+          "role": "user",
+          "content": (changed ? "(Note: the student's files have changed since your last reply.)\n\n" : "") + input
+        });
       }
 
       try {
         codioIDE.coachBot.showThinkingAnimation();
         const result = await codioIDE.coachBot.ask({
-          systemPrompt: systemPrompt,
+          systemPrompt: strictState.on ? systemPrompt + STRICT_PROMPT : systemPrompt,
           messages: messages
         }, {preventMenu: true});
-        messages.push({"role": "assistant", "content": result.result});
+        const reply = (result && typeof result.result === "string") ? result.result : "";
+        if (!reply.trim()) {
+          session.failedReplies = (session.failedReplies || 0) + 1;
+          codioIDE.coachBot.write("Hmm, I didn't get an answer that time. Please ask again!");
+          messages.pop();        // drop the user turn that got no answer
+          continue;
+        } else {
+          messages.push({ "role": "assistant", "content": reply });
+          if (pendingHash !== null) lastAnsweredHash = pendingHash;
+        }
       } catch (e) {
+        session.failedReplies = (session.failedReplies || 0) + 1;
         codioIDE.coachBot.write("Hmm, something went wrong on my end. Try asking that again!");
         messages.pop();
         continue;
@@ -511,9 +876,9 @@ The student says: ${initialInput}`;
     }
 
     session.ended = new Date().toISOString();
-    await queueSave(sessionHistory); // flush queued writes (safe to await — no input follows)
+    if (logEnabled) await queueSave(sessionHistory); // flush queued writes (safe to await — no input follows)
 
-    codioIDE.coachBot.write("You're welcome! Come back any time you're stuck.");
+    codioIDE.coachBot.write(GOODBYE);
     codioIDE.coachBot.showMenu();
   }
 })(window.codioIDE, window);
